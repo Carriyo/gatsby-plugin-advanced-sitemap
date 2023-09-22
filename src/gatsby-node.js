@@ -47,9 +47,9 @@ const runQuery = (handler, { query, mapping, exclude }) => handler(query).then((
         if (r.data?.[source]?.edges && r.data[source].edges.length) {
             r.data[source].edges = r.data[source].edges.filter(({ node }) => !exclude.some((excludedRoute) => { 
                 const sourceType = node.__typename ? `all${node.__typename}` : source;
-                const slug = (sourceType === `allMarkdownRemark` || sourceType === `allMdx`) || (node?.fields?.slug) ? node.fields.slug.replace(/^\/|\/$/, ``) : node.slug.replace(/^\/|\/$/, ``);
+                const slug = (sourceType === `allMarkdownRemark` || sourceType === `allMdx`) || (node?.fields?.slug) ? node.fields.slug.replace(/^\//, ``) : node.slug.replace(/^\//, ``);
                 
-                excludedRoute = typeof excludedRoute === `object` ? excludedRoute : excludedRoute.replace(/^\/|\/$/, ``);
+                excludedRoute = typeof excludedRoute === `object` ? excludedRoute : excludedRoute.replace(/^\//, ``);
 
                 // test if the passed regular expression is valid
                 if (typeof excludedRoute === `object`) {
@@ -75,6 +75,26 @@ const runQuery = (handler, { query, mapping, exclude }) => handler(query).then((
     return r.data;
 });
 
+const trailSlash = (input) => {
+  const type = typeof input;
+  if (type === 'object') {
+    if (Array.isArray(input)) {
+      return input.map(trailSlash);
+    } else {
+      return Object.fromEntries(
+        Object.entries(input).map(
+          ([key, val]) => [key, trailSlash(val)],
+        ),
+      );
+    }
+    return input;
+  } else if (type === 'string') {
+    return `${input}/`.replace(/\/+$/, '/');
+  } else {
+    return input;
+  }
+};
+
 const serialize = ({ ...sources } = {}, { site, allSitePage }, { mapping, addUncaughtPages }) => {
     const nodes = [];
     const sourceObject = {};
@@ -83,7 +103,7 @@ const serialize = ({ ...sources } = {}, { site, allSitePage }, { mapping, addUnc
     
     allSitePage.edges.forEach((page) => {
         if (page?.node?.url){
-            const pathurl = page.node.url.replace(/\/$/,``);
+            const pathurl = trailSlash(page.node.url);
             allSitePagePathNodeMap.set(pathurl, pathurl);
         }
     });
@@ -146,7 +166,7 @@ const serialize = ({ ...sources } = {}, { site, allSitePage }, { mapping, addUnc
 
     nodes[0].pages = uniqBy(nodes[0].pages, `url`);
 
-    return nodes;
+    return trailSlash(nodes);
 };
 
 exports.onPostBuild = async ({ graphql, pathPrefix }, pluginOptions) => {
