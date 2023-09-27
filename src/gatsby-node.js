@@ -80,7 +80,7 @@ const trailSlash = (input) => {
   if (type === 'object') {
     if (Array.isArray(input)) {
       return input.map(trailSlash);
-    } else {
+    } else if (input !== null) {
       return Object.fromEntries(
         Object.entries(input).map(
           ([key, val]) => [key, trailSlash(val)],
